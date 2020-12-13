@@ -131,12 +131,7 @@ SERVER_EMAIL = '{{ __mailman3_django_config_merged.server_email }}'
 
 # Change this when you have a real email backend
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-{% if mailman3_localemail %}
-EMAIL_HOST = {{ mailman3_localemail_host }}
-EMAIL_PORT = {{ mailman3_localemail_port }}
-EMAIL_HOST_USER = {{ mailman3_localemail_user }}
-EMAIL_HOST_PASSWORD = {{ mailman3_localemail_password }}
-{% endif %}
+
 #
 # Social auth
 #
