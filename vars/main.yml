@@ -1,0 +1,6 @@
+container_list:
+  - "lxc"
+  - "docker"
+  - "podman"
+  - "container"
+  - "openvz"
