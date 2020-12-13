@@ -1,3 +1,5 @@
+![CI](https://github.com/Darkbat91/ansible-role-mailman3/workflows/CI/badge.svg?branch=main)
+
 # Ansible mailman role
 Basic ansible role to enable the full mailman suite
 
