@@ -25,7 +25,7 @@
     name: "{{ mailman3_core_service_name }}"
     enabled: true
     state: started
-  when: 
+  when:
     - mailman3_process_manager != "supervisor"
     - ansible_virtualization_type not in container_list
 
@@ -35,6 +35,6 @@
     enabled: true
     state: started
   loop: "{{ mailman3_domains | default(['']) }}"
-  when: 
+  when:
     - mailman3_process_manager != "supervisor"
     - ansible_virtualization_type not in container_list

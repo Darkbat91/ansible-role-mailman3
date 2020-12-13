@@ -7,7 +7,7 @@
   service:
     name: "{{ mailman3_core_service_name }}"
     state: restarted
-  when: 
+  when:
     - ansible_virtualization_type not in container_list
 
 - name: restart mailman3-web service
@@ -15,5 +15,5 @@
     name: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}"
     state: restarted
   loop: "{{ mailman3_domains | default(['']) }}"
-  when: 
+  when:
     - ansible_virtualization_type not in container_list
