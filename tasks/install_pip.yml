@@ -15,9 +15,9 @@
 
 - name: Update setuptools
   pip:
-    name: "setuptools"
+    name: "setuptools==51.0.0"
     virtualenv: "{{ mailman3_install_dir }}"
-    state: 51.0.0
+    state: present
 
 - name: Install Mailman and Python dependencies
   pip:
