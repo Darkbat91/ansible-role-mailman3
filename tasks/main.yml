@@ -1,0 +1,36 @@
+---
+- name: Include user creation tasks
+  include_tasks: user.yml
+  when: mailman3_create_user
+
+- name: Include group discovery tasks
+  import_tasks: group_discovery.yml
+
+- name: Include installation tasks
+  import_tasks: "install_{{ mailman3_install_method }}.yml"
+
+- name: Include configuration tasks
+  import_tasks: config.yml
+
+- name: Include Postfix map distribution tasks
+  include_tasks: distribute_maps.yml
+  when: mailman3_distribute_maps is defined
+
+# Perform whatever restarts are needed now, prevents double restart on first run
+- name: Flush handlers
+  meta: flush_handlers
+
+- name: Ensure Mailman Core is enabled and running
+  service:
+    name: "{{ mailman3_core_service_name }}"
+    enabled: true
+    state: started
+  when: mailman3_process_manager != "supervisor"
+
+- name: Ensure Mailman Web is enabled and running
+  service:
+    name: "{{ mailman3_web_service_name }}{{ '@' if mailman3_domains is defined else '' }}{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ mailman3_domains | default(['']) }}"
+  when: mailman3_process_manager != "supervisor"

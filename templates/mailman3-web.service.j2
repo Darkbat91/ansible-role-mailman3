@@ -1,0 +1,22 @@
+[Unit]
+Description=Mailman 3 Django/uWSGI {% if mailman3_domains is defined %}(domain %i) {% endif %}service
+After=network.target
+Documentation=https://mailman.readthedocs.io/
+ConditionPathExists={{ mailman3_etc_dir }}/uwsgi{% if mailman3_domains is defined %}_%i{% endif %}.ini
+
+[Service]
+ExecStart={{ mailman3_install_dir }}/bin/{{ mailman3_python_uwsgi_package }} --ini {{ mailman3_etc_dir }}/uwsgi{% if mailman3_domains is defined %}_%i{% endif %}.ini
+{# https://github.com/unbit/uwsgi/issues/1980 #}
+{% if mailman3_domains is defined %}
+Environment=DJANGO_SETTINGS_MODULE=settings_%i
+{% endif %}
+Restart=on-failure
+KillSignal=SIGQUIT
+Type=notify
+StandardError=syslog
+NotifyAccess=all
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,104 @@
+---
+- name: Install system dependencies
+  package:
+    name: "{{ mailman3_system_dependency_packages }}"
+  when: mailman3_install_system_dependencies
+
+# This is a separate task from the next one because `python3 -m venv` doesn't install wheel and pip needs it to build
+# wheels (not strictly required, but preferred) and won't load it mid-invocation if installed during the next task
+- name: Create Mailman venv
+  pip:
+    name: wheel
+    virtualenv: "{{ mailman3_install_dir }}"
+    virtualenv_python: "{{ mailman3_virtualenv_python | default(omit) }}"
+    virtualenv_command: "{{ mailman3_virtualenv_command | default(omit) }}"
+
+- name: Update setuptools
+  pip:
+    name: "setuptools"
+    virtualenv: "{{ mailman3_install_dir }}"
+    state: 51.0.0
+
+- name: Install Mailman and Python dependencies
+  pip:
+    name: "{{ mailman3_packages + mailman3_extra_packages }}"
+    virtualenv: "{{ mailman3_install_dir }}"
+
+- name: Create configuration, data, and state directories
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner | default(omit) }}"
+    group: "{{ item.group | default(omit) }}"
+    mode: "{{ item.mode | default(omit) }}"
+    state: directory
+  with_items:
+    - path: "{{ mailman3_etc_dir }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+    # Creates the parent /var/opt/mailman3 with default permissions
+    - path: "{{ mailman3_var_dir | dirname }}"
+    - path: "{{ mailman3_var_dir }}"
+      owner: "{{ __mailman3_user_name }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+    - path: "{{ mailman3_log_dir }}"
+      owner: "{{ __mailman3_user_name }}"
+      group: "{{ __mailman3_group_name }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_var_dir }}"
+    - path: "{{ mailman3_django_var_dir }}/run"
+      owner: "{{ mailman3_web_user }}"
+      group: "{{ mailman3_web_group }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_var_dir }}/db"
+      owner: "{{ mailman3_web_user }}"
+      group: "{{ mailman3_web_group }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_var_dir }}/fulltext_index"
+      owner: "{{ mailman3_web_user }}"
+      group: "{{ mailman3_web_group }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_var_dir }}/emails"
+      owner: "{{ mailman3_web_user }}"
+      group: "{{ mailman3_web_group }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_project_dir }}"
+      group: "{{ mailman3_web_group }}"
+      mode: "0750"
+    - path: "{{ mailman3_django_log_dir }}"
+      mode: "0750"
+      owner: "{{ mailman3_web_user }}"
+      group: "{{ mailman3_web_group }}"
+
+- name: Create HyperKitty attachment directory
+  file:
+    path: "{{ __mailman3_django_config_merged.hyperkitty_attachment_folder }}"
+    owner: "{{ mailman3_web_user }}"
+    group: "{{ mailman3_web_group }}"
+    mode: "0750"
+    state: directory
+  when: __mailman3_django_config_merged.hyperkitty_attachment_folder is defined
+
+# TODO: This is needed to read settings_local.py from /etc/opt/mailman3, but will it be needed for anything else?
+# TODO: config option to control this?
+- name: Add web user to Mailman user group
+  user:
+    name: "{{ mailman3_web_user }}"
+    groups: "{{ __mailman3_group_name }}"
+
+- name: Install systemd service unit files
+  template:
+    src: "{{ item.src | default(item) }}.j2"
+    dest: /etc/systemd/system/{{ item.dest | default(item) }}
+    mode: "0640"
+  loop:
+    - mailman3-core.service
+    - src: mailman3-web.service
+      dest: mailman3-web{{ '@' if mailman3_domains is defined else '' }}.service
+  loop_control:
+    label: "{{ item.dest | default(item) }}"
+  when: mailman3_process_manager == 'systemd'
+  notify:
+    - reload systemd manager configuration
+
+# TODO: remove the non-instance service unit file if mailman3_domains is defined, remove the instance service unit file

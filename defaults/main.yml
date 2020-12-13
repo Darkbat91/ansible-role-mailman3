@@ -1,0 +1,254 @@
+---
+
+# TODO: make sure you point out to set django secret_key, django admins, django archive key?
+
+mailman3_install_method: pip
+mailman3_language: en
+mailman3_language_code: en-us
+mailman3_install_system_dependencies: "{{ __mailman3_debian or __mailman3_redhat }}"
+mailman3_python_uwsgi_package: pyuwsgi
+mailman3_backup_configs: false
+# list of dicts with keys `name`, `email`, `pass`
+mailman3_django_superusers: []
+# list of hosted domains
+# mailman3_domains: []
+# If mailman3_domains is set, mailman3_config.default_from_email is ignored since it's assumed you want per-domain
+# addresses. In this case, set the username portion of the email (the domain will be added automatically)
+mailman3_default_from_user: postorius
+
+# Distribute Postfix maps to MXs for use with relay_recipient_maps, so that MXs can reject mail to nonexistent
+# addresses. Installs Ansible and a playbook in a virtualenv. User/auth setup is up to you.
+#
+# list of dicts, required keys:
+#   host: inventory_hostname of mx (or "all") for vars to apply to all hosts
+#   mailman3_distribute_maps_dir: remote directory on mx to distribute maps to
+# all keys other than "host" are set as either host vars or in [all:vars] if host = "all"
+# mailman3_distribute_maps: []
+mailman3_distribute_maps_dir: "{{ mailman3_var_dir }}/distribute_maps"
+
+# For pip installs, the role creates a venv at this path
+mailman3_install_dir: /opt/mailman3
+
+# uWSGI/proxy communication socket (value only used for pip installs, Debian uses a hardcoded default)
+mailman3_uwsgi_socket: "{{ mailman3_django_var_dir }}/run/uwsgi.sock"
+
+# Optionally serve directly with uWSGI
+# mailman3_http_socket:
+mailman3_uwsgi_static: false
+
+# You should rarely need to set these
+# mailman3_virtualenv_python: python3
+mailman3_virtualenv_command: python3 -m venv   # https://github.com/ansible/ansible/issues/52275
+# mailman3_virtualenv_command: pyvenv
+
+__mailman3_debian: "{{ ansible_os_family == 'Debian' }}"
+__mailman3_redhat: "{{ ansible_os_family == 'RedHat' }}"
+__mailman3_pip: "{{ mailman3_install_method == 'pip' }}"
+
+# pip needed packages if using the pip install method, system packages if using the package method
+__mailman3_pip_packages:
+  - whoosh
+  # - django>=1.11
+  - django==2.1.*   # TODO: Updae to latest when we have backend decided
+  - mailman
+  - postorius
+  - hyperkitty
+  - mailman-hyperkitty
+  - "{{ mailman3_python_uwsgi_package }}"
+__mailman3_debian_packages:
+  - mailman3-full
+__mailman3_redhat_packages: null  # currently nonexistent
+mailman3_packages: >-
+    {{
+        __mailman3_pip_packages if __mailman3_pip else (
+        __mailman3_debian_packages if __mailman3_debian else
+        __mailman3_redhat_packages)
+    }}
+# for e.g. psycopg2
+mailman3_extra_packages: []
+
+
+# Dependant system packages needed if using the pip install method
+__mailman3_debian_system_dependency_packages:
+  - python3             # requires Ubuntu >= 16.04, Debian >= stretch (for 3.5)
+  - python3-setuptools
+  - python3-venv
+  - sassc
+  - uwsgi
+  - uwsgi-plugin-python3
+
+__mailman3_redhat_system_dependency_packages:
+  - python36    # requires EL7+
+  - sassc
+  - uwsgi
+  - uwsgi-plugin-python36
+  - gcc
+  - python3-devel
+
+mailman3_system_dependency_packages: >-
+    {{
+        __mailman3_debian_system_dependency_packages if __mailman3_debian else
+        __mailman3_redhat_system_dependency_packages
+    }}
+
+# TODO: supervisor
+mailman3_process_manager: >-
+    {{
+        'systemd' if ansible_virtualization_type != 'docker' else None
+    }}
+
+mailman3_core_service_name: >-
+    {{
+        'mailman3-core' if __mailman3_pip else (
+        'mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_web_service_name: >-
+    {{
+        'mailman3-web' if __mailman3_pip else (
+        'mailman3-web' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_etc_dir: >-
+    {{
+        '/etc/opt/mailman3' if __mailman3_pip else (
+        '/etc/mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_var_dir: >-
+    {{
+        '/var/opt/mailman3/core' if __mailman3_pip else (
+        '/var/lib/mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_log_dir: >-
+    {{
+        '/var/opt/mailman3/core/log' if __mailman3_pip else (
+        '/var/log/mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_django_var_dir: >-
+    {{
+        '/var/opt/mailman3/web' if __mailman3_pip else (
+        '/var/lib/mailman3' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_django_project_dir: >-
+    {{
+        '/var/opt/mailman3/web/project' if __mailman3_pip else (
+        '/usr/share/mailman3-web' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_django_static_dir: >-
+    {{
+        '/var/opt/mailman3/web/static' if __mailman3_pip else (
+        '/var/lib/mailman3/web/static' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_django_log_dir: >-
+    {{
+        '/var/opt/mailman3/web/log' if __mailman3_pip else (
+        '/var/log/mailman3/web' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_django_settings_file: >-
+    {{
+        '/etc/opt/mailman3/django-settings.py' if __mailman3_pip else (
+        '/etc/mailman3/mailman-web.py' if __mailman3_debian else
+        None)
+    }}
+
+mailman3_web_user: >-
+    {{
+        'www-data' if __mailman3_debian else (
+        'nginx')
+    }}
+
+mailman3_web_group: >-
+    {{
+        'www-data' if __mailman3_debian else (
+        'nginx')
+    }}
+
+mailman3_core_api_hostname: localhost
+mailman3_core_api_port: 8001
+mailman3_core_api_admin_user: restadmin
+mailman3_core_api_admin_pass: restpass
+mailman3_archiver_key: SecretArchiverAPIKey
+
+__mailman3_config_default:
+  mailman:
+    layout: custom
+  paths.custom:
+    var_dir: "{{ mailman3_var_dir }}"
+    bin_dir: "$argv"
+    log_dir: "{{ mailman3_log_dir }}"
+    lock_dir: "{{ mailman3_var_dir }}/locks"
+    data_dir: "{{ mailman3_var_dir }}/data"
+    cache_dir: "{{ mailman3_var_dir }}/cache"
+    etc_dir: "{{ mailman3_etc_dir }}"
+    messages_dir: "{{ mailman3_var_dir }}/messages"
+    archives_dir: "{{ mailman3_var_dir }}/archives"
+    template_dir: "{{ mailman3_var_dir }}/templates"
+    pid_file: "{{ mailman3_var_dir }}/master.pid"
+    lock_file: "{{ mailman3_var_dir }}/master.lck"
+  webservice:
+    hostname: "{{ mailman3_core_api_hostname }}"
+    port: "{{ mailman3_core_api_port }}"
+    use_https: "no"
+    admin_user: "{{ mailman3_core_api_admin_user }}"
+    admin_pass: "{{ mailman3_core_api_admin_pass }}"
+    api_version: "3.1"
+  archiver.hyperkitty:
+    class: mailman_hyperkitty.Archiver
+    enable: "yes"
+    configuration: "{{ mailman3_etc_dir }}/hyperkitty.cfg"
+__mailman3_config_merged: "{{ __mailman3_config_default | combine(mailman3_config | default({}), recursive=True) }}"
+
+__mailman3_django_config_default:
+  admins: "{{ mailman3_django_superusers }}"
+  allowed_hosts: "{{ mailman3_domains | default([inventory_hostname]) }}"
+  rest_api_url: "http://{{ mailman3_core_api_hostname }}:{{ mailman3_core_api_port }}"
+  rest_api_user: "{{ mailman3_core_api_admin_user }}"
+  rest_api_pass: "{{ mailman3_core_api_admin_pass }}"
+  archiver_key: "{{ mailman3_archiver_key }}"
+  databases:
+    default:
+      ENGINE: django.db.backends.sqlite3
+      NAME: "{{ mailman3_django_var_dir }}/db/mailmansuite.db"
+      USER: ''
+      PASSWORD: ''
+      HOST: ''
+      PORT: ''
+  # Disable by default, recommended Django setup for nginx passes Host, not X-Forwarded-Host
+  use_x_forwarded_host: true
+  secure_proxy_ssl_header: HTTP_X_FORWARDED_PROTO
+  default_http_protocol: https
+  default_from_email: postorius@{{ inventory_hostname }}
+  server_email: root@{{ inventory_hostname }}
+  compress_offline: true
+  socialaccount_providers: {}
+__mailman3_django_config_merged: "{{ __mailman3_django_config_default | combine(mailman3_django_config | default({}), recursive=True) }}"
+
+mailman3_postorius_root: 'postorius/'
+mailman3_hyperkitty_root: 'hyperkitty/'
+
+__mailman_user_name: mailman
+mailman3_create_user: "{{ __mailman3_pip and not __mailman3_debian }}"
+
+__mailman3_debian_user_name: list
+__mailman3_user_name: >-
+    {{
+        (mailman3_user | default({})).name | default(
+        __mailman3_debian_user_name if __mailman3_debian else
+        'mailman')
+    }}

@@ -1,0 +1,10 @@
+---
+roles:
+  # Just using this for now until we put one in the Rocky Repo
+  - src: https://github.com/Darkbat91/ansible-role-repo-epel
+    version: master
+    name: repo-epel
+
+  - src: https://github.com/Darkbat91/mod-nginx
+    version: devel
+    name: mod-nginx
