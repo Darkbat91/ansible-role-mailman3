@@ -48,6 +48,3 @@ dependencies:
   - src: https://github.com/Darkbat91/mod-nginx
     version: devel
     name: mod-nginx
-
-collections:
-  - name: community.general
