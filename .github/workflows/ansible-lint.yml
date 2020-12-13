@@ -28,6 +28,6 @@ jobs:
 #         run: ansible-galaxy collection install -r molecule/requirements.yml
 
       - name: Ansible Lint
-        uses: ansible/ansible-lint-action@master
+        uses: Darkbat91/ansible-lint-action@main
         with:
           args: "--exclude .github"
